@@ -22,7 +22,7 @@ def on_click(*params):
 
         bot.messaging.send_message(
             user_peer,
-            "Давайте что нибудь сделаем",
+            "Давайте что нибудь сделаем. Вы в любой момент можете написать /menu и вернуться сюда.",
             utils.get_default_layout(
                 User.select().where(User.uid == params[0].uid).get()
             )
@@ -48,7 +48,7 @@ def on_msg(*params):
 
     state = User.select().where(User.uid == params[0].sender_uid).get().state
 
-    if params[0].message.textMessage.text == "/cancel":
+    if params[0].message.textMessage.text == "/cancel" or params[0].message.textMessage.text == "/menu":
         handlers.cancel_handler(bot, params)
 
     elif state == "GUIDE_DELETION":
@@ -59,6 +59,9 @@ def on_msg(*params):
 
     elif state == "NEW_GUIDE_NAME" or state == "NEW_GUIDE_TEXT":
         handlers.guide_creation_handler(bot, params)
+
+    elif state == "GUIDE_EDIT":
+        handlers.guide_edit_handler(bot, params)
 
 
 if __name__ == '__main__':

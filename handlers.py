@@ -4,6 +4,7 @@ from models import Guide, User
 import utils
 
 GUIDE_CACHE = {}
+DELETE_CACHE = {}
 
 
 def cancel_handler(bot: DialogBot, params):
@@ -123,6 +124,14 @@ def default_admin_handler(bot: DialogBot, params):
 
         utils.set_state_by_uid(params[0].uid, "NEW_GUIDE_NAME")
 
+    elif params[0].value == "edit_guide":
+        bot.messaging.send_message(
+            bot.users.get_user_peer_by_id(params[0].uid),
+            "Какой гайд требуется редактировать?"
+        )
+
+        utils.set_state_by_uid(params[0].uid, "GUIDE_EDIT")
+
 
 def default_user_handler(bot: DialogBot, params):
     if params[0].value == "list_guides":
@@ -186,8 +195,7 @@ def guide_creation_handler(bot: DialogBot, params):
 
         bot.messaging.send_message(
             params[0].peer,
-            "Уверен, этот текст важный и полезный. Мне следует показывать этот гайдов в списке гайдов для каждого "
-            "юзера? ",
+            "Мне следует показывать этот гайдов в списке гайдов для каждого пользователя? ",
             utils.get_essentialness()
         )
 
@@ -221,6 +229,7 @@ def guide_creation_handler(bot: DialogBot, params):
         utils.set_state_by_uid(params[0].uid, "START")
         cancel_handler(bot, params)
 
+
 def guide_getter_by_id(bot: DialogBot, params):
     id = int(params[0].value)
     if not Guide.select().where(Guide.id == id).exists():
@@ -231,3 +240,36 @@ def guide_getter_by_id(bot: DialogBot, params):
         return
 
     utils.send_guide_by_id(bot, params, id)
+
+
+def guide_edit_handler(bot: DialogBot, params):
+    if params[0].sender_uid not in DELETE_CACHE:
+        guide_name = params[0].message.textMessage.text
+        if not Guide.select().where(Guide.name == guide_name).exists():
+            bot.messaging.send_message(
+                params[0].peer,
+                "Такого гайда не существует. Попробуйте другое название или напишите /cancel для возврата в главное меню"
+            )
+            return
+
+        utils.send_guide_by_name(bot, params, guide_name)
+        bot.messaging.send_message(
+            params[0].peer,
+            "Напишите, на что мне заменить текущий текст:"
+        )
+
+        DELETE_CACHE[params[0].sender_uid] = guide_name
+    else:
+        new_text = params[0].message.textMessage.text
+
+        guide = Guide.select().where(Guide.name == DELETE_CACHE[params[0].sender_uid]).get()
+        guide.text = new_text
+        guide.save()
+
+        bot.messaging.send_message(
+            params[0].peer,
+            "Текст успешно обновлен"
+        )
+
+        del DELETE_CACHE[params[0].sender_uid]
+        cancel_handler(bot, params)

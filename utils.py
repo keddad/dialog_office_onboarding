@@ -17,6 +17,10 @@ def _get_admin_layout():
             interactive_media.InteractiveMedia(
                 "default_admin",
                 interactive_media.InteractiveMediaButton("delete_guide", "Удалить гайд")
+            ),
+            interactive_media.InteractiveMedia(
+                "default_admin",
+                interactive_media.InteractiveMediaButton("edit_guide", "Редактировать гайд")
             )
         ]
     )]
