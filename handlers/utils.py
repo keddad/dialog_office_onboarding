@@ -3,6 +3,29 @@ from dialog_bot_sdk.bot import DialogBot
 from models import Guide, User
 
 
+def cancel_handler(bot: DialogBot, params):
+    try:
+        bot.messaging.send_message(
+            params[0].peer,
+            "Возвращаю вас в главное меню",
+            get_default_layout(
+                User.select().where(User.uid == params[0].sender_uid).get()
+            )
+        )
+
+        set_state_by_uid(params[0].sender_uid, "START")
+    except (AttributeError, KeyError):
+        bot.messaging.send_message(
+            bot.users.get_user_peer_by_id(params[0].uid),
+            "Возвращаю вас в главное меню",
+            get_default_layout(
+                User.select().where(User.uid == params[0].uid).get()
+            )
+        )
+
+        set_state_by_uid(params[0].uid, "START")
+
+
 def _get_admin_layout():
     return [interactive_media.InteractiveMediaGroup(
         [
