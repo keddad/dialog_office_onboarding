@@ -1,10 +1,12 @@
 from dialog_bot_sdk.bot import DialogBot
 from dialog_bot_sdk import interactive_media, internal
-from models import Guide, User
+from models import Guide, User, Job
 from handlers import utils
+import dateparser
 
 GUIDE_CACHE = {}
 DELETE_CACHE = {}
+SCHEDULE_CACHE = {}
 
 
 def guide_deletion_handler(bot: DialogBot, params):
@@ -25,6 +27,81 @@ def guide_deletion_handler(bot: DialogBot, params):
             params[0].peer,
             "Гайд успешно удален"
         )
+        utils.cancel_handler(bot, params)
+
+
+def default_schedule_handler(bot: DialogBot, params):
+    """
+    Обработчик шеулдера, "default_schedule"
+    """
+    if params[0].value == "add_guide_to_schedule":
+        bot.messaging.send_message(
+            bot.users.get_user_peer_by_id(params[0].uid),
+            "Какой гайд мне следует отметить для отсроченной отправки?"
+        )
+
+        utils.set_state_by_uid(params[0].uid, "GUIDE_SCHEDULE_ADD")
+
+    elif params[0].value == "get_schedule_waitline":
+        bot.messaging.send_message(
+            bot.users.get_user_peer_by_id(params[0].uid),
+            "Список отсроченных гайдов. Для удаления нажмите на гайд.",
+            utils.get_scheduled_jobs_list()
+        )
+
+
+def default_schedule_add_handler(bot: DialogBot, params):
+    """
+    Обработчик шеулдера, "GUIDE_SCHEDULE_ADD"
+    """
+    if params[0].sender_uid not in SCHEDULE_CACHE:
+        guide_name = params[0].message.textMessage.text
+        if not Guide.select().where(Guide.name == guide_name).exists():
+            bot.messaging.send_message(
+                params[0].peer,
+                "Такого гайда не существует. Попробуйте другое название или напишите /cancel для возврата в главное меню"
+            )
+            return
+
+        guide_id = Guide.select().where(Guide.name == guide_name).get().get_id()
+        SCHEDULE_CACHE[params[0].sender_uid] = guide_id
+
+        bot.messaging.send_message(
+            params[0].peer,
+            "Когда мне следует его опубликовать?"
+        )
+
+        bot.messaging.send_message(
+            params[0].peer,
+            "Рекомендуемый формат даты: ДД/ММ/ГГ ЧЧ:ММ \nДругие возможные форматы:\n"
+            "* Завтра в 12:01\n"
+            "* послезавтра"
+        )
+
+    else:
+        date_from_user = params[0].message.textMessage.text
+        date = dateparser.parse(date_from_user)
+
+        if date is None:
+            bot.messaging.send_message(
+                params[0].peer,
+                "Не могу понять дату, попробуйте другой формат"
+            )
+            return
+
+        bot.messaging.send_message(
+            params[0].peer,
+            f"Хорошо, я отправлю его всем пользователям {date.day}/{date.month}/{date.year} в {date.hour}:{date.minute}"
+        )  # TODO: Сделать подтверждение, когда пофиксят баг
+
+        new_job = Job.create(
+            guide_id=SCHEDULE_CACHE[params[0].sender_uid],
+            publication_time=date
+        )
+        new_job.save()
+
+        del SCHEDULE_CACHE[params[0].sender_uid]
+
         utils.cancel_handler(bot, params)
 
 
@@ -63,6 +140,13 @@ def default_admin_handler(bot: DialogBot, params):
         )
 
         utils.set_state_by_uid(params[0].uid, "GUIDE_EDIT")
+
+    elif params[0].value == "schedule":
+        bot.messaging.send_message(
+            bot.users.get_user_peer_by_id(params[0].uid),
+            "Настройки отсроченной отправки гайда всем пользователям",
+            utils.get_schedule_layout()
+        )
 
 
 def guide_creation_handler(bot: DialogBot, params):
@@ -181,3 +265,25 @@ def guide_edit_handler(bot: DialogBot, params):
 
         del DELETE_CACHE[params[0].sender_uid]
         utils.cancel_handler(bot, params)
+
+
+def scheduled_job_delete_handler(bot: DialogBot, params):
+    job_id = int(params[0].value)
+
+    job = Job.select().where(Job.id == job_id).get()
+
+    # TODO Когда баг пофиксят, надо подтверждение удаления
+
+    name = Guide.select().where(Guide.id == job.guide_id).get().name
+    job.delete_instance()
+
+    bot.messaging.send_message(
+        bot.users.get_user_peer_by_id(params[0].uid),
+        f"Гайд '{name}' был успешно удален из отложенных"
+    )
+
+    bot.messaging.update_message(
+        params[0],
+        "Настройки отсроченной отправки гайда всем пользователям",
+        utils.get_scheduled_jobs_list()
+    )

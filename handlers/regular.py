@@ -4,6 +4,32 @@ from models import Guide, User
 from handlers import utils
 
 
+def unknown_message_handler(bot: DialogBot, params):
+    try:
+        peer = bot.users.get_user_peer_by_id(params[0].uid)
+    except AttributeError:
+        peer = params[0].peer
+
+    bot.messaging.send_message(
+        peer,
+        "Я не понимаю, что ты хочешь сделать. Можешь написать /menu для возврата в главное меню"
+    )
+
+
+def error_handler(bot: DialogBot, params):
+    try:
+        peer = bot.users.get_user_peer_by_id(params[0].uid)
+    except AttributeError:
+        peer = params[0].peer
+
+    bot.messaging.send_message(
+        peer,
+        "Кажется, что то сломалось. Возвращаемся в главное меню"
+    )
+
+    utils.cancel_handler(bot, params)
+
+
 def new_user_handler(bot: DialogBot, params):
     """
     Обработчик для новых пользователей, возвращающий приветственное сообщение
@@ -16,7 +42,7 @@ def new_user_handler(bot: DialogBot, params):
 
         bot.messaging.send_message(
             params[0].peer,
-            "Кто ты, странник?",
+            "Укажите роль",
             [interactive_media.InteractiveMediaGroup(
                 [
                     interactive_media.InteractiveMedia(
@@ -98,6 +124,7 @@ def default_user_handler(bot: DialogBot, params):
         )
 
         utils.set_state_by_uid(params[0].uid, "GET_GUIDE_BY_NAME")
+
 
 def guide_getter_by_id(bot: DialogBot, params):
     """

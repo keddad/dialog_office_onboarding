@@ -1,6 +1,6 @@
 from dialog_bot_sdk import interactive_media
 from dialog_bot_sdk.bot import DialogBot
-from models import Guide, User
+from models import Guide, User, Job
 
 
 def cancel_handler(bot: DialogBot, params):
@@ -44,6 +44,10 @@ def _get_admin_layout():
             interactive_media.InteractiveMedia(
                 "default_admin",
                 interactive_media.InteractiveMediaButton("edit_guide", "Редактировать гайд")
+            ),
+            interactive_media.InteractiveMedia(
+                "default_admin",
+                interactive_media.InteractiveMediaButton("schedule", "Настроить отложенную отправку")
             )
         ]
     )]
@@ -61,6 +65,39 @@ def _get_user_layout():
                 interactive_media.InteractiveMediaButton("list_guides", "Список гайдов")
             ),
         ]
+    )]
+
+
+def get_schedule_layout():
+    return [interactive_media.InteractiveMediaGroup(
+        [
+            interactive_media.InteractiveMedia(
+                "default_schedule",
+                interactive_media.InteractiveMediaButton("get_schedule_waitline", "Список гайдов на отправку")
+            ),
+            interactive_media.InteractiveMedia(
+                "default_schedule",
+                interactive_media.InteractiveMediaButton("add_guide_to_schedule", "Отсрочить отправку гайда")
+            ),
+        ]
+    )]
+
+
+def get_scheduled_jobs_list():
+    jobs = {}
+
+    for job in Job.select().order_by(Job.publication_time):
+        jobs[str(job.get_id())] = f"{Guide.select().where(Guide.id == job.guide_id).get().name} " \
+                                  f" {job.publication_time.hour}:{job.publication_time.minute}"
+
+    return [interactive_media.InteractiveMediaGroup(
+        [interactive_media.InteractiveMedia(
+            "scheduled_job_list",
+            interactive_media.InteractiveMediaSelect(
+                jobs,
+                label="Список отсроченных гайдов"
+            )
+        )]
     )]
 
 

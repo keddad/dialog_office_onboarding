@@ -21,4 +21,12 @@ class User(peewee.Model):
         database = database
 
 
-database.create_tables([Guide, User])
+class Job(peewee.Model):
+    guide_id = peewee.IntegerField()
+    publication_time = peewee.DateTimeField()
+
+    class Meta:
+        database = database
+
+
+database.create_tables([Guide, User, Job])
