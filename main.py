@@ -92,14 +92,19 @@ if __name__ == '__main__':
             if (job.publication_time - now).seconds <= 60:
                 guide = Guide.select().where(Guide.id == job.guide_id).get()
                 for user in User.select():
-                    bot.messaging.send_message(
-                        bot.users.get_user_peer_by_id(user.uid),
-                        f"Отложенная отправка гайда '{guide.name}':"
-                    )
+                    if not user.is_admin:
+                        bot.messaging.send_message(
+                            bot.users.get_user_peer_by_id(user.uid),
+                            f"Отложенная отправка гайда '{guide.name}':"
+                        )
 
-                    bot.messaging.send_message(
-                        bot.users.get_user_peer_by_id(user.uid),
-                        guide.text
-                    )
-
+                        bot.messaging.send_message(
+                            bot.users.get_user_peer_by_id(user.uid),
+                            guide.text
+                        )
+                    else:
+                        bot.messaging.send_message(
+                            bot.users.get_user_peer_by_id(user.uid),
+                            f"Пользователям был успешно отправлен гайд '{guide.name}':"
+                        )
                 job.delete_instance()
