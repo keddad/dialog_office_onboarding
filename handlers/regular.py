@@ -111,11 +111,17 @@ def default_user_handler(bot: DialogBot, params):
     """
     if params[0].value == "list_guides":
         guides = [guide for guide in Guide.select().where(Guide.essential == True)]
-        bot.messaging.send_message(
-            bot.users.get_user_peer_by_id(params[0].uid),
-            "Выбери гайд",
-            utils.get_guides_layout(guides)
-        )
+        if len(guides):
+            bot.messaging.send_message(
+                bot.users.get_user_peer_by_id(params[0].uid),
+                "Выбери гайд",
+                utils.get_guides_layout(guides)
+            )
+        else:
+            bot.messaging.send_message(
+                bot.users.get_user_peer_by_id(params[0].uid),
+                "Пока не существует ни одного общедоступного гайда"
+            )
 
     elif params[0].value == "read_guide_by_name":
         bot.messaging.send_message(

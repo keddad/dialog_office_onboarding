@@ -1,11 +1,13 @@
-version: "3"
+version: "3.7"
 services:
   bot:
     environment:
-      - BOT_TOKEN=TOKEN
+      - BOT_TOKEN=4efaffc2b318d64f350a0045e4debd0d1cad4ae3
     build:
       context: .
       dockerfile: Dockerfile
     restart: always
     volumes:
-      - "./db.db:/app/db.db"
+      - type: bind
+        source: ./db.db
+        target: /app/db.db
