@@ -83,12 +83,7 @@ def get_schedule_layout():
     )]
 
 
-def get_scheduled_jobs_list():
-    jobs = {}
-
-    for job in Job.select().order_by(Job.publication_time):
-        jobs[str(job.get_id())] = f"{Guide.select().where(Guide.id == job.guide_id).get().name} " \
-                                  f" {job.publication_time.hour}:{job.publication_time.minute}"
+def get_scheduled_jobs_list(jobs):
 
     return [interactive_media.InteractiveMediaGroup(
         [interactive_media.InteractiveMedia(
@@ -117,18 +112,19 @@ def get_essentialness():
 
 
 def get_guides_layout(guides: list):
-    interactive_media_list = []
+    interactive_media_list = {}
     for guide in guides:
-        interactive_media_list.append(
-            interactive_media.InteractiveMedia(
-                "get_guide",
-                interactive_media.InteractiveMediaButton(str(guide.get_id()), guide.name)
-            )
-        )
+        interactive_media_list[str(guide.get_id())] = guide.name
 
-    return [
-        interactive_media.InteractiveMediaGroup(interactive_media_list)
-    ]
+    return [interactive_media.InteractiveMediaGroup(
+        [interactive_media.InteractiveMedia(
+            "get_guide",
+            interactive_media.InteractiveMediaSelect(
+                interactive_media_list,
+                label="Выбери гайд"
+            )
+        )]
+    )]
 
 
 def get_default_layout(user: User):

@@ -43,11 +43,24 @@ def default_schedule_handler(bot: DialogBot, params):
         utils.set_state_by_uid(params[0].uid, "GUIDE_SCHEDULE_ADD")
 
     elif params[0].value == "get_schedule_waitline":
-        bot.messaging.send_message(
-            bot.users.get_user_peer_by_id(params[0].uid),
-            "Список отсроченных гайдов. Для удаления нажмите на гайд.",
-            utils.get_scheduled_jobs_list()
-        )
+        jobs = {}
+
+        for job in Job.select().order_by(Job.publication_time):
+            jobs[str(job.get_id())] = f"{Guide.select().where(Guide.id == job.guide_id).get().name} " \
+                                      f" {job.publication_time.hour}:{job.publication_time.minute}" \
+                                      f" {job.publication_time.day}/{job.publication_time.month}/{job.publication_time.year}"
+
+        if len(jobs):
+            bot.messaging.send_message(
+                bot.users.get_user_peer_by_id(params[0].uid),
+                "Удаление отсроченного гайда",
+                utils.get_scheduled_jobs_list(jobs)
+            )
+        else:
+            bot.messaging.update_message(
+                params[0],
+                "Нет гайдов, отложенных для отправки",
+            )
 
 
 def default_schedule_add_handler(bot: DialogBot, params):
@@ -114,7 +127,7 @@ def default_admin_handler(bot: DialogBot, params):
         if len(guides):
             bot.messaging.send_message(
                 bot.users.get_user_peer_by_id(params[0].uid),
-                "Выбери гайд",
+                "Выберите гайд для просмотра",
                 utils.get_guides_layout(guides)
             )
         else:
@@ -182,7 +195,7 @@ def guide_creation_handler(bot: DialogBot, params):
 
         bot.messaging.send_message(
             params[0].peer,
-            "Теперь напиши гайд, одним сообщением"
+            "Теперь напиши гайд. Что бы закончить, напиши /end"
         )
 
         utils.set_state_by_uid(params[0].sender_uid, "NEW_GUIDE_TEXT")
@@ -190,8 +203,19 @@ def guide_creation_handler(bot: DialogBot, params):
     elif state == "NEW_GUIDE_TEXT":
         text = params[0].message.textMessage.text
 
+        if text == "/end":
+            bot.messaging.send_message(
+                params[0].peer,
+                "Мне следует показывать этот гайдов в списке гайдов по умолчанию для каждого пользователя? ",
+                utils.get_essentialness()
+            )
+
+            utils.set_state_by_uid(params[0].sender_uid, "NEW_GUIDE_ESSENTIAL")
+            return
+
         try:
-            GUIDE_CACHE[params[0].sender_uid]["text"] = text
+            GUIDE_CACHE[params[0].sender_uid]["text"] += "\n"
+            GUIDE_CACHE[params[0].sender_uid]["text"] += text
         except (AttributeError, KeyError):
             bot.messaging.send_message(
                 params[0].peer,
@@ -200,13 +224,7 @@ def guide_creation_handler(bot: DialogBot, params):
             utils.cancel_handler(bot, params)
             return
 
-        bot.messaging.send_message(
-            params[0].peer,
-            "Мне следует показывать этот гайдов в списке гайдов по умолчанию для каждого пользователя? ",
-            utils.get_essentialness()
-        )
 
-        utils.set_state_by_uid(params[0].sender_uid, "NEW_GUIDE_ESSENTIAL")
 
 
     elif state == "NEW_GUIDE_ESSENTIAL":
@@ -246,7 +264,7 @@ def guide_edit_handler(bot: DialogBot, params):
         if not Guide.select().where(Guide.name == guide_name).exists():
             bot.messaging.send_message(
                 params[0].peer,
-                "Такого гайда не существует. Попробуйте другое название или напишите /cancel для возврата в главное меню"
+                "Такого гайда не существует. Попробуйте другое название или напишите /menu для возврата в главное меню"
             )
             return
 
@@ -288,8 +306,18 @@ def scheduled_job_delete_handler(bot: DialogBot, params):
         f"Гайд '{name}' был успешно удален из отложенных"
     )
 
-    bot.messaging.update_message(
-        params[0],
-        "Настройки отсроченной отправки гайда всем пользователям",
-        utils.get_scheduled_jobs_list()
-    )
+    jobs = {}
+
+    for job in Job.select().order_by(Job.publication_time):
+        jobs[str(job.get_id())] = f"{Guide.select().where(Guide.id == job.guide_id).get().name} " \
+                                  f" {job.publication_time.hour}:{job.publication_time.minute}" \
+                                  f" {job.publication_time.day}/{job.publication_time.month}/{job.publication_time.year}"
+
+    if len(jobs):
+        bot.messaging.update_message(
+            params[0],
+            "Удаление отсроченного гайда",
+            utils.get_scheduled_jobs_list(jobs)
+        )
+    else:
+        utils.cancel_handler(bot, params)

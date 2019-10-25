@@ -6,7 +6,6 @@ import os
 import time
 from datetime import datetime
 
-
 BOT_TOKEN = os.environ.get("BOT_TOKEN") or ""
 ENDPOINT = os.environ.get("ENDPOINT") or "hackathon-mob.transmit.im"
 
@@ -36,7 +35,6 @@ def on_click(*params):
 
         else:
             regular.unknown_message_handler(bot, params)
-
     except:
         regular.error_handler(bot, params)
 
