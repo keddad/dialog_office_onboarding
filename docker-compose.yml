@@ -1,6 +1,6 @@
 version: "3.7"
 services:
-  bot:
+  dialog_office_onboarding:
     environment:
       - BOT_TOKEN=TOKEN
     build:
